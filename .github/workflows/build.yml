@@ -1,4 +1,4 @@
-# نسخه: V_20260710_0007_CLOUD_COMPILER_PROGUARD_FIX
+# نسخه: V_20260710_0036_CLOUD_COMPILER_INTERNET_FIX
 # ========================================================
 name: Build Mobile Apps
 
@@ -27,10 +27,14 @@ jobs:
     - name: Create Flutter Project Structure
       run: flutter create .
       
+    # 💡 جراحی حیاتی: تزریق مستقیم مجوز اینترنت به قلب سیستم‌عامل اندروید
+    - name: Add Internet Permission
+      run: |
+        sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
+        
     - name: Install Dependencies
       run: flutter pub get
 
-    # 💡 جراحی طلایی: اصلاح کلمه‌ی ممنوعه داخل فایل‌های افزونه در سرور
     - name: Fix Proguard Error in Plugin
       run: |
         sed -i "s/proguard-android.txt/proguard-android-optimize.txt/g" /home/runner/.pub-cache/hosted/pub.dev/flutter_inappwebview_android-*/android/build.gradle
