@@ -1,4 +1,4 @@
-# نسخه: V_20260709_2345_CLOUD_COMPILER_V4_FIX
+# نسخه: V_20260709_2358_CLOUD_COMPILER_FINAL_STRUCTURE
 # ========================================================
 name: Build Mobile Apps
 
@@ -24,6 +24,10 @@ jobs:
       with:
         channel: 'stable'
         
+    # 💡 جراحی طلایی: دستور ساخت اسکلت خالی اندروید و آی‌اواس برای قرار گرفتن آیکون‌ها
+    - name: Create Flutter Project Structure
+      run: flutter create .
+      
     - name: Install Dependencies
       run: flutter pub get
 
@@ -50,6 +54,10 @@ jobs:
       uses: subosito/flutter-action@v2
       with:
         channel: 'stable'
+        
+    # 💡 جراحی طلایی: دستور ساخت اسکلت خالی آی‌اواس
+    - name: Create Flutter Project Structure
+      run: flutter create .
         
     - name: Install Dependencies
       run: flutter pub get
