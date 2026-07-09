@@ -1,18 +1,20 @@
-# Version: V_20260709_2236_CLOUD_COMPILER_WITH_ASSETS
+# نسخه: V_20260709_2345_CLOUD_COMPILER_V4_FIX
+# ========================================================
 name: Build Mobile Apps
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
+  workflow_dispatch: 
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Java
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
         java-version: '17'
@@ -25,7 +27,6 @@ jobs:
     - name: Install Dependencies
       run: flutter pub get
 
-    # 💡 دستور جادویی برای ساخت آیکون‌ها و اسپلش در اندروید
     - name: Generate App Icons and Splash
       run: |
         dart run flutter_launcher_icons
@@ -35,7 +36,7 @@ jobs:
       run: flutter build apk --release
 
     - name: Upload Android APK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: iran-erbil-android-apk
         path: build/app/outputs/flutter-apk/app-release.apk
@@ -43,7 +44,7 @@ jobs:
   build-ios:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
@@ -53,7 +54,6 @@ jobs:
     - name: Install Dependencies
       run: flutter pub get
 
-    # 💡 دستور جادویی برای ساخت آیکون‌ها و اسپلش در آیفون
     - name: Generate App Icons and Splash
       run: |
         dart run flutter_launcher_icons
@@ -66,7 +66,7 @@ jobs:
       run: tar -czf ios-project.tar.gz build/ios/iphoneos
 
     - name: Upload iOS Project
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: iran-erbil-ios-project
         path: ios-project.tar.gz
