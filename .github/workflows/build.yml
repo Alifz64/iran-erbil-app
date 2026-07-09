@@ -1,4 +1,4 @@
-# نسخه: V_20260709_2358_CLOUD_COMPILER_FINAL_STRUCTURE
+# نسخه: V_20260710_0007_CLOUD_COMPILER_PROGUARD_FIX
 # ========================================================
 name: Build Mobile Apps
 
@@ -24,12 +24,16 @@ jobs:
       with:
         channel: 'stable'
         
-    # 💡 جراحی طلایی: دستور ساخت اسکلت خالی اندروید و آی‌اواس برای قرار گرفتن آیکون‌ها
     - name: Create Flutter Project Structure
       run: flutter create .
       
     - name: Install Dependencies
       run: flutter pub get
+
+    # 💡 جراحی طلایی: اصلاح کلمه‌ی ممنوعه داخل فایل‌های افزونه در سرور
+    - name: Fix Proguard Error in Plugin
+      run: |
+        sed -i "s/proguard-android.txt/proguard-android-optimize.txt/g" /home/runner/.pub-cache/hosted/pub.dev/flutter_inappwebview_android-*/android/build.gradle
 
     - name: Generate App Icons and Splash
       run: |
@@ -55,7 +59,6 @@ jobs:
       with:
         channel: 'stable'
         
-    # 💡 جراحی طلایی: دستور ساخت اسکلت خالی آی‌اواس
     - name: Create Flutter Project Structure
       run: flutter create .
         
