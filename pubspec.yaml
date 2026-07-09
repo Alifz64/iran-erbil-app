@@ -1,0 +1,41 @@
+# Version: V_20260709_2236_PUBSPEC_WITH_ASSETS
+name: iran_erbil_app
+description: "Iran Erbil Mobile Application Wrapper"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_inappwebview: ^6.0.0
+  url_launcher: ^6.2.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1  # 💡 افزونه ساخت آیکون خودکار
+  flutter_native_splash: ^2.4.0    # 💡 افزونه ساخت اسپلش خودکار
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon.png
+    - assets/splash.png
+
+# --- تنظیمات آیکون برنامه ---
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon.png"
+  min_sdk_android: 21
+
+# --- تنظیمات صفحه اسپلش بومی ---
+flutter_native_splash:
+  color: "#ffffff" # رنگ پس‌زمینه اسپلش (می‌توانید کد رنگ برند خود را بگذارید)
+  image: "assets/splash.png"
+  android: true
+  ios: true
