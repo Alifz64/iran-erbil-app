@@ -1,5 +1,6 @@
-// نسخه: V_20260710_1119_MAIN_WITH_INAPP_SPLASH
+// نسخه: V_20260710_1144_MAIN_FIXED_RENDER
 // ========================================================
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -33,13 +34,21 @@ class WebViewScreen extends StatefulWidget {
 class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   
-  // متغیرهای کنترل وضعیت برای جلوگیری از صفحه سفید
   bool _isLoading = true;
   String _errorMessage = '';
+  Timer? _timeoutTimer;
 
   @override
   void initState() {
     super.initState();
+    
+    // 💡 تایمر پشتیبان: اگر لود شدن به هر دلیلی بیشتر از ۱۵ ثانیه طول کشید، اسپلش را بردار تا ببینیم مشکل از چیست
+    _timeoutTimer = Timer(const Duration(seconds: 15), () {
+      if (mounted && _isLoading) {
+        setState(() { _isLoading = false; });
+      }
+    });
+
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setUserAgent("Mozilla/5.0 (Linux; Android 13; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36")
@@ -49,16 +58,20 @@ class _WebViewScreenState extends State<WebViewScreen> {
             setState(() { _isLoading = true; _errorMessage = ''; });
           },
           onPageFinished: (String url) {
-            // پایان اسپلش و حذف بنر گوگل
-            setState(() { _isLoading = false; });
+            // 💡 جراحی زمان‌بندی: فقط زمانی اسپلش را مخفی کن که به آدرس نهایی حاوی اطلاعات رسیده باشیم
+            if (url.contains('script.googleusercontent.com') || url.contains('exec')) {
+              setState(() { _isLoading = false; });
+              _timeoutTimer?.cancel();
+            }
+
+            // 💡 جراحی CSS: فقط و فقط کلاسِ اختصاصی بنر گوگل را مخفی کن، بدون دست زدن به قالب اصلی برنامه شما
             _controller.runJavaScript("""
               var style = document.createElement('style');
-              style.innerHTML = '.apps-share-space-banner-table, td[style*="background-color: #e2eaf8"], body > table:first-child { display: none !important; } html, body { margin: 0 !important; padding: 0 !important; top: 0 !important; }';
+              style.innerHTML = '.apps-share-space-banner-table { display: none !important; } div[aria-label="This application was created by another user, not by Google."] { display: none !important; }';
               document.head.appendChild(style);
             """);
           },
           onWebResourceError: (WebResourceError error) {
-            // شکارچی خطا: نمایش دلیل قطعی به جای صفحه سفید
             setState(() {
               _isLoading = false;
               _errorMessage = error.description;
@@ -80,6 +93,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
       )
       ..loadRequest(Uri.parse("https://script.google.com/macros/s/AKfycbyC4r6ETL4TpC3FQIMjDd2gJoTB5mijctOcHXLbkCV68aeCb0EKr5QHpzbJpcqE3BQv/exec"));
   }
+  
+  @override
+  void dispose() {
+    _timeoutTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,10 +107,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            // ۱. لایه زیرین: مرورگر که اطلاعات را لود می‌کند
             WebViewWidget(controller: _controller),
             
-            // ۲. لایه میانی: اسپلش اسکرین داخلی (جلوگیری از صفحه سفید)
             if (_isLoading)
               Container(
                 color: Colors.white,
@@ -99,13 +116,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // نمایش لوگوی شما که در پوشه assets قرار دارد
                       Image.asset('assets/splash.png', width: 180),
                       const SizedBox(height: 30),
                       const CircularProgressIndicator(color: Colors.blue),
                       const SizedBox(height: 20),
                       const Text(
-                        'در حال دریافت اطلاعات...',
+                        'در حال دریافت و آماده‌سازی اطلاعات...',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey),
                         textDirection: TextDirection.rtl,
                       ),
@@ -114,7 +130,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 ),
               ),
               
-            // ۳. لایه بالایی: نمایش دقیق خطا در صورت خرابی اینترنت
             if (_errorMessage.isNotEmpty)
               Container(
                 color: Colors.white,
@@ -127,7 +142,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                         const Icon(Icons.wifi_off, size: 60, color: Colors.red),
                         const SizedBox(height: 20),
                         Text(
-                          'ارتباط با سرور برقرار نشد!\n$_errorMessage',
+                          'ارتباط با سرور برقرار نشد!\\n$_errorMessage',
                           style: const TextStyle(fontSize: 16, color: Colors.red),
                           textAlign: TextAlign.center,
                           textDirection: TextDirection.ltr,
