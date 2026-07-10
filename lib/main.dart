@@ -1,4 +1,4 @@
-// نسخه: V_20260710_1327_MAIN_FINAL_NAME
+// نسخه: V_20260710_1338_MAIN_PROGRESS_FIX
 // ========================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ایران‌اربیل IranErbil', // 💡 نام داخلی اپلیکیشن تغییر یافت
+      title: 'ایران‌اربیل IranErbil',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: const WebViewScreen(),
       debugShowCheckedModeBanner: false,
@@ -65,7 +65,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
             setState(() { _isLoading = true; _errorMessage = ''; });
             _injectBannerKiller(); 
           },
-          onProgressChanged: (int progress) {
+          // 💡 اصلاح قطعی: تغییر نام تابع به onProgress طبق استاندارد نسخه جدید
+          onProgress: (int progress) {
             if (progress > 40) {
               _injectBannerKiller(); 
             }
