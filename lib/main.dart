@@ -1,4 +1,4 @@
-// نسخه: V_20260710_1338_MAIN_PROGRESS_FIX
+// نسخه: V_20260710_1422_FINAL_PERFECTION
 // ========================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -50,7 +50,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
   }
 
   void _initWebView() {
-    _timeoutTimer = Timer(const Duration(seconds: 15), () {
+    // تایمر پشتیبان برای جلوگیری از معطلی کاربر در اینترنت‌های بسیار ضعیف
+    _timeoutTimer = Timer(const Duration(seconds: 14), () {
       if (mounted && _isLoading) {
         setState(() { _isLoading = false; });
       }
@@ -62,27 +63,34 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
-            setState(() { _isLoading = true; _errorMessage = ''; });
+            if (!url.contains('script.googleusercontent.com')) {
+              setState(() { _isLoading = true; _errorMessage = ''; });
+            }
             _injectBannerKiller(); 
           },
-          // 💡 اصلاح قطعی: تغییر نام تابع به onProgress طبق استاندارد نسخه جدید
           onProgress: (int progress) {
-            if (progress > 40) {
-              _injectBannerKiller(); 
+            _injectBannerKiller(); 
+            // اگر صفحه اصلی شما بالای ۹۰ درصد لود شد، اسپلش را بردار
+            if (progress > 90 && _isLoading) {
+              setState(() { _isLoading = false; });
+              _timeoutTimer?.cancel();
             }
           },
           onPageFinished: (String url) {
-            if (url.contains('script.googleusercontent.com') || url.contains('exec')) {
+            // 💡 حل قطعی صفحه سفید: برداشتن اسپلش تنها پس از رسیدن به دامنه محتوایی نهایی گوگل
+            if (url.contains('script.googleusercontent.com')) {
               setState(() { _isLoading = false; });
               _timeoutTimer?.cancel();
             }
             _injectBannerKiller(); 
           },
           onWebResourceError: (WebResourceError error) {
-            setState(() {
-              _isLoading = false;
-              _errorMessage = error.description;
-            });
+            if (error.description.contains('ERR_CONNECTION_REFUSED') || error.description.contains('Internet')) {
+              setState(() {
+                _isLoading = false;
+                _errorMessage = error.description;
+              });
+            }
           },
           onNavigationRequest: (NavigationRequest request) {
             final url = request.url;
@@ -101,33 +109,45 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ..loadRequest(Uri.parse(_defaultUrl));
   }
 
+  // 💡 ابزار فوق پیشرفته MutationObserver برای ریشه‌کن کردن بنر به محض ساخته شدن در صفحه
   void _injectBannerKiller() {
     _controller.runJavaScript(r"""
       (function() {
         var styleId = 'anti-google-banner-style';
-        if (document.getElementById(styleId)) return;
-        var style = document.createElement('style');
-        style.id = styleId;
-        style.innerHTML = `
-          .apps-share-space-banner-table, 
-          .apps-share-space-banner,
-          div[aria-label*="This application was created"], 
-          div[aria-label*="not by Google"],
-          iframe~table,
-          body > table:first-child { 
-            display: none !important; 
-            visibility: hidden !important;
-            height: 0 !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-          }
-          html, body { 
-            margin: 0 !important; 
-            padding: 0 !important; 
-            top: 0 !important; 
-          }
-        `;
-        (document.head || document.documentElement).appendChild(style);
+        if (!document.getElementById(styleId)) {
+          var style = document.createElement('style');
+          style.id = styleId;
+          style.innerHTML = `
+            .apps-share-space-banner-table, 
+            .apps-share-space-banner,
+            div[aria-label*="This application was created"], 
+            div[aria-label*="not by Google"],
+            iframe~table,
+            body > table:first-child { 
+              display: none !important; 
+              visibility: hidden !important;
+              height: 0 !important;
+              opacity: 0 !important;
+              pointer-events: none !important;
+            }
+            html, body { 
+              margin: 0 !important; 
+              padding: 0 !important; 
+              top: 0 !important; 
+            }
+          `;
+          (document.head || document.documentElement).appendChild(style);
+        }
+        
+        var kill = function() {
+          var target = document.querySelector('.apps-share-space-banner-table, .apps-share-space-banner, body > table:first-child');
+          if (target) target.style.setProperty('display', 'none', 'important');
+        };
+        kill();
+        
+        if (window.BannerObserver) window.BannerObserver.disconnect();
+        window.BannerObserver = new MutationObserver(kill);
+        window.BannerObserver.observe(document.body || document.documentElement, { childList: true, subtree: true });
       })();
     """);
   }
@@ -138,7 +158,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
       if (initialUri != null) {
         _controller.loadRequest(initialUri);
       }
-      
       _appLinks.uriLinkStream.listen((uri) {
         _controller.loadRequest(uri);
       });
@@ -155,6 +174,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 💡 محاسبه داینامیک برای تنظیم اندازه لوگوی اسپلش روی ۷۵٪ عرض صفحه
+    double splashWidth = MediaQuery.of(context).size.width * 0.75;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -169,10 +191,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Image.asset('assets/splash.png', width: 180),
-                      const SizedBox(height: 30),
+                      // اعمال اندازه جدید لوگو
+                      Image.asset('assets/splash.png', width: splashWidth),
+                      const SizedBox(height: 40),
                       const CircularProgressIndicator(color: Colors.blue),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 25),
                       const Text(
                         'در حال دریافت و آماده‌سازی اطلاعات...',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey),
