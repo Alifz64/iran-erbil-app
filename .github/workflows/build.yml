@@ -1,4 +1,5 @@
-# Version: V_20260710_1534_BUILD_FINAL_HYBRID
+# نسخه: V_20260710_1548_BUILD_MANIFEST_FIX
+# ========================================================
 name: Build Mobile Apps
 
 on:
@@ -26,7 +27,7 @@ jobs:
     - name: Create Flutter Project Structure
       run: flutter create .
       
-    # 💡 اصلاح مهندسی ساختار اندروید با پایتون برای اعمال نام، دسترسی اینترنت و پیوندهای عمیق بدون خطای کاراکتری
+    # 💡 اصلاح مهندسی ساختار اندروید: استفاده از نقاط امنِ XML برای جلوگیری از متلاشی شدن فایل
     - name: Configure Android Manifest via Python
       run: |
         python3 -c "
@@ -37,12 +38,12 @@ jobs:
         # ۱. تنظیم نام برند اپلیکیشن
         text = re.sub(r'android:label=\"[^\"]*\"', 'android:label=\"ایران‌اربیل IranErbil\"', text, count=1)
         
-        # ۲. اضافه کردن دسترسی اینترنت
+        # ۲. اضافه کردن دسترسی اینترنت در نقطه امنِ قبل از تگ اپلیکیشن
         if 'android.permission.INTERNET' not in text:
-            text = text.replace('<manifest', '<manifest>\n    <uses-permission android:name=\"android.permission.INTERNET\" />')
+            text = text.replace('<application', '<uses-permission android:name=\"android.permission.INTERNET\" />\n    <application')
         
-        # ۳. تزریق کدهای بدون نقص اینتنت‌فیلتر پیوندهای عمیق (پروتکل وب و پروتکل اختصاصی)
-        deep_links = '''        <intent-filter android:label=\"ایران‌اربیل IranErbil\">
+        # ۳. تزریق کدهای بدون نقص اینتنت‌فیلتر پیوندهای عمیق
+        deep_links = '''        <intent-filter android:autoVerify=\"true\">
                     <action android:name=\"android.intent.action.VIEW\" />
                     <category android:name=\"android.intent.category.DEFAULT\" />
                     <category android:name=\"android.intent.category.BROWSABLE\" />
@@ -56,7 +57,8 @@ jobs:
                     <data android:scheme=\"iranerbil\" android:host=\"auth\" />
                 </intent-filter>'''
         
-        text = text.replace('</intent-filter>', '</intent-filter>\n' + deep_links)
+        if 'script.google.com' not in text:
+            text = text.replace('</intent-filter>', '</intent-filter>\n' + deep_links, 1)
         
         with open(path, 'w') as f: f.write(text)
         print('Android Configuration Completed Successfully.')
