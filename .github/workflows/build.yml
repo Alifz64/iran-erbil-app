@@ -1,4 +1,5 @@
-# Version: V_20260710_1041_BUILD_OFFICIAL
+# نسخه: V_20260710_1100_BUILD_BULLETPROOF_PERMISSION
+# ========================================================
 name: Build Mobile Apps
 
 on:
@@ -26,9 +27,10 @@ jobs:
     - name: Create Flutter Project Structure
       run: flutter create .
       
-    - name: Add Internet Permission
+    # 💡 تزریق بی‌نقص و تضمینیِ مجوز اینترنت
+    - name: Inject Internet Permission Safely
       run: |
-        sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
+        sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <application/g' android/app/src/main/AndroidManifest.xml
         
     - name: Install Dependencies
       run: flutter pub get
