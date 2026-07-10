@@ -1,6 +1,6 @@
-// Version: v5.25-20260709-1932_Flutter_Core
+// Version: V_20260710_1041_MAIN_OFFICIAL
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 void main() {
@@ -30,55 +30,49 @@ class WebViewScreen extends StatefulWidget {
 }
 
 class _WebViewScreenState extends State<WebViewScreen> {
-  InAppWebViewController? webViewController;
+  late final WebViewController _controller;
 
-  // آدرس اصلی وب‌اپلیکیشن گوگل اسکریپت شما
-  final String webAppUrl = "https://script.google.com/macros/s/AKfycbyC4r6ETL4TpC3FQIMjDd2gJoTB5mijctOcHXLbkCV68aeCb0EKr5QHpzbJpcqE3BQv/exec";
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      // 💡 هویت‌سازی مرورگر: معرفی اپلیکیشن به عنوان نسخه رسمی گوگل کروم برای لود بدون مشکل صفحات گوگل
+      ..setUserAgent("Mozilla/5.0 (Linux; Android 13; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36")
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (String url) {
+            // 💡 حذف بنر آبی گوگل بلافاصله پس از پایان بارگذاری صفحه
+            _controller.runJavaScript("""
+              var style = document.createElement('style');
+              style.innerHTML = '.apps-share-space-banner-table, td[style*="background-color: #e2eaf8"], body > table:first-child { display: none !important; } html, body { margin: 0 !important; padding: 0 !important; top: 0 !important; }';
+              document.head.appendChild(style);
+            """);
+          },
+          onNavigationRequest: (NavigationRequest request) {
+            final url = request.url;
+            // مدیریت لینک‌های غیر وب (مثل تلگرام، واتساپ، تماس تلفنی)
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+              launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+              return NavigationDecision.prevent;
+            }
+            // ارجاع مستقیم شبکه‌های اجتماعی به اپلیکیشن بومی گوشی
+            if (url.contains('t.me') || url.contains('wa.me') || url.contains('instagram.com')) {
+              launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse("https://script.google.com/macros/s/AKfycbyC4r6ETL4TpC3FQIMjDd2gJoTB5mijctOcHXLbkCV68aeCb0EKr5QHpzbJpcqE3BQv/exec"));
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: InAppWebView(
-          initialUrlRequest: URLRequest(url: WebUri(webAppUrl)),
-          initialSettings: InAppWebViewSettings(
-            useShouldOverrideUrlLoading: true,
-            mediaPlaybackRequiresUserGesture: false,
-            javaScriptEnabled: true,
-            domStorageEnabled: true,
-            supportZoom: false,
-          ),
-          onWebViewCreated: (controller) {
-            webViewController = controller;
-          },
-          // 💡 جراحی بزرگ: حذف بنر آبی گوگل به محض لود شدن صفحات
-          onLoadStop: (controller, url) async {
-            // تزریق استایل به بالاترین لایه‌ برای مخفی کردن بنر پیش‌فرض گوگل اسکریپت
-            await controller.injectCSSCode(source: """
-              .apps-share-space-banner-table, 
-              td[style*="background-color: #e2eaf8"], 
-              body > table:first-child { 
-                display: none !important; 
-              }
-              html, body {
-                margin: 0 !important;
-                padding: 0 !important;
-                top: 0 !important;
-              }
-            """);
-          },
-          // 💡 مدیریت هوشمند لینک‌ها: باز کردن تلگرام و واتساپ در اپلیکیشن بومی گوشی
-          shouldOverrideUrlLoading: (controller, navigationAction) async {
-            var uri = navigationAction.request.url;
-            if (uri != null && !["http", "https", "file", "chrome", "data", "javascript", "about"].contains(uri.scheme)) {
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-                return NavigationActionPolicy.CANCEL;
-              }
-            }
-            return NavigationActionPolicy.ALLOW;
-          },
-        ),
+        child: WebViewWidget(controller: _controller),
       ),
     );
   }

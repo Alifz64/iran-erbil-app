@@ -1,5 +1,4 @@
-# نسخه: V_20260710_0036_CLOUD_COMPILER_INTERNET_FIX
-# ========================================================
+# Version: V_20260710_1041_BUILD_OFFICIAL
 name: Build Mobile Apps
 
 on:
@@ -27,17 +26,12 @@ jobs:
     - name: Create Flutter Project Structure
       run: flutter create .
       
-    # 💡 جراحی حیاتی: تزریق مستقیم مجوز اینترنت به قلب سیستم‌عامل اندروید
     - name: Add Internet Permission
       run: |
         sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
         
     - name: Install Dependencies
       run: flutter pub get
-
-    - name: Fix Proguard Error in Plugin
-      run: |
-        sed -i "s/proguard-android.txt/proguard-android-optimize.txt/g" /home/runner/.pub-cache/hosted/pub.dev/flutter_inappwebview_android-*/android/build.gradle
 
     - name: Generate App Icons and Splash
       run: |
