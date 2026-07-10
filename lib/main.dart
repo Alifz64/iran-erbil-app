@@ -1,4 +1,4 @@
-// نسخه: V_20260710_1144_MAIN_FIXED_RENDER
+// نسخه: V_20260710_1215_BANNER_PERMANENT_REMOVAL
 // ========================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -42,7 +42,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
   void initState() {
     super.initState();
     
-    // 💡 تایمر پشتیبان: اگر لود شدن به هر دلیلی بیشتر از ۱۵ ثانیه طول کشید، اسپلش را بردار تا ببینیم مشکل از چیست
     _timeoutTimer = Timer(const Duration(seconds: 15), () {
       if (mounted && _isLoading) {
         setState(() { _isLoading = false; });
@@ -58,17 +57,53 @@ class _WebViewScreenState extends State<WebViewScreen> {
             setState(() { _isLoading = true; _errorMessage = ''; });
           },
           onPageFinished: (String url) {
-            // 💡 جراحی زمان‌بندی: فقط زمانی اسپلش را مخفی کن که به آدرس نهایی حاوی اطلاعات رسیده باشیم
             if (url.contains('script.googleusercontent.com') || url.contains('exec')) {
               setState(() { _isLoading = false; });
               _timeoutTimer?.cancel();
             }
 
-            // 💡 جراحی CSS: فقط و فقط کلاسِ اختصاصی بنر گوگل را مخفی کن، بدون دست زدن به قالب اصلی برنامه شما
-            _controller.runJavaScript("""
-              var style = document.createElement('style');
-              style.innerHTML = '.apps-share-space-banner-table { display: none !important; } div[aria-label="This application was created by another user, not by Google."] { display: none !important; }';
-              document.head.appendChild(style);
+            // 💡 جراحی طلایی: اجرای لوپ مداوم برای شکار و حذف بنر گوگل به محض زاییده شدن در DOM
+            _controller.runJavaScript(r"""
+              (function() {
+                function killGoogleBanner() {
+                  // ۱. حذف بر اساس کلاس‌های معروف بنر گوگل
+                  var elements = document.querySelectorAll('.apps-share-space-banner-table, .apps-share-space-banner');
+                  elements.forEach(function(el) {
+                    if (el) el.style.setProperty('display', 'none', 'important');
+                  });
+
+                  // ۲. حذف بر اساس ویژگی aria-label بنر
+                  var ariaElements = document.querySelectorAll('div[aria-label*="This application was created"], div[aria-label*="not by Google"]');
+                  ariaElements.forEach(function(el) {
+                    if (el) el.style.setProperty('display', 'none', 'important');
+                  });
+
+                  // ۳. جراحی لایه اول بدنه (گوگل گاهی بنر را به عنوان اولین جدول بادی می‌گذارد)
+                  if (document.body && document.body.firstChild && document.body.firstChild.tagName === 'TABLE') {
+                    document.body.firstChild.style.setProperty('display', 'none', 'important');
+                  }
+
+                  // ۴. صفر کردن حاشیه‌ها برای پر شدن تمام صفحه
+                  if (document.body) {
+                    document.body.style.setProperty('margin', '0', 'important');
+                    document.body.style.setProperty('padding', '0', 'important');
+                    document.body.style.setProperty('top', '0', 'important');
+                  }
+                }
+
+                // اجرای فوری
+                killGoogleBanner();
+
+                // اجرای متناوب هر ۱۰۰ میلی‌ثانیه تا ۷ ثانیه اول لود صفحه (برای مچ‌گیری تزریق‌های تأخیری گوگل)
+                var runCount = 0;
+                var bannerKillerInterval = setInterval(function() {
+                  killGoogleBanner();
+                  runCount++;
+                  if (runCount > 70) {
+                    clearInterval(bannerKillerInterval);
+                  }
+                }, 100);
+              })();
             """);
           },
           onWebResourceError: (WebResourceError error) {
@@ -142,7 +177,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                         const Icon(Icons.wifi_off, size: 60, color: Colors.red),
                         const SizedBox(height: 20),
                         Text(
-                          'ارتباط با سرور برقرار نشد!\\n$_errorMessage',
+                          'ارتباط با سرور برقرار نشد!\n$_errorMessage',
                           style: const TextStyle(fontSize: 16, color: Colors.red),
                           textAlign: TextAlign.center,
                           textDirection: TextDirection.ltr,
