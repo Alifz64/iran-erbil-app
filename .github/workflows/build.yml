@@ -1,4 +1,4 @@
-# نسخه: V_20260710_1100_BUILD_BULLETPROOF_PERMISSION
+# نسخه: V_20260710_1327_BUILD_FINAL_NAME
 # ========================================================
 name: Build Mobile Apps
 
@@ -27,10 +27,19 @@ jobs:
     - name: Create Flutter Project Structure
       run: flutter create .
       
-    # 💡 تزریق بی‌نقص و تضمینیِ مجوز اینترنت
-    - name: Inject Internet Permission Safely
+    # 💡 تنظیم قطعی نام برند در سیستم‌عامل اندروید
+    - name: Set Android App Name
+      run: |
+        sed -i 's/android:label="[^"]*"/android:label="ایران‌اربیل IranErbil"/g' android/app/src/main/AndroidManifest.xml
+
+    - name: Add Internet Permission
       run: |
         sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <application/g' android/app/src/main/AndroidManifest.xml
+
+    # 💡 تزریق لینک‌های عمیق تلگرام (با نام لیبل جدید)
+    - name: Inject Deep Link Intent Filter
+      run: |
+        sed -i '/<\/intent-filter>/a \        <intent-filter android:label="ایران‌اربیل IranErbil">\n            <action android:name="android.intent.action.VIEW" \/>\n            <category android:name="android.intent.category.DEFAULT" \/>\n            <category android:name="android.intent.category.BROWSABLE" \/>\n            <data android:scheme="https" android:host="script.google.com" android:pathPrefix="\/macros\/s\/AKfycbyC4r6ETL4TpC3FQIMjDd2gJoTB5mijctOcHXLbkCV68aeCb0EKr5QHpzbJpcqE3BQv\/exec" \/>\n        <\/intent-filter>' android/app/src/main/AndroidManifest.xml
         
     - name: Install Dependencies
       run: flutter pub get
@@ -61,6 +70,12 @@ jobs:
         
     - name: Create Flutter Project Structure
       run: flutter create .
+      
+    # 💡 تنظیم قطعی نام برند در سیستم‌عامل آی‌اواس (آیفون)
+    - name: Set iOS App Name
+      run: |
+        plutil -replace CFBundleDisplayName -string "ایران‌اربیل IranErbil" ios/Runner/Info.plist
+        plutil -replace CFBundleName -string "ایران‌اربیل IranErbil" ios/Runner/Info.plist
         
     - name: Install Dependencies
       run: flutter pub get

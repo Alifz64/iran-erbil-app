@@ -1,4 +1,4 @@
-# Version: V_20260710_1041_PUBSPEC_OFFICIAL
+# Version: V_20260710_1235_PUBSPEC_DEEPLINK
 name: iran_erbil_app
 description: "Iran Erbil Mobile Application Wrapper"
 publish_to: 'none'
@@ -10,8 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  webview_flutter: ^4.8.0        # 💡 سوئیچ به لایبرری رسمی و فوق‌العاده پایدار گوگل
+  webview_flutter: ^4.8.0
   url_launcher: ^6.2.5
+  app_links: ^6.0.1             # 💡 اضافه شدن موتور مدیریت پیوندهای عمیق تلگرام
 
 dev_dependencies:
   flutter_test:

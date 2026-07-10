@@ -1,9 +1,10 @@
-// نسخه: V_20260710_1215_BANNER_PERMANENT_REMOVAL
+// نسخه: V_20260710_1327_MAIN_FINAL_NAME
 // ========================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:app_links/app_links.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +17,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ایران اربیل',
+      title: 'ایران‌اربیل IranErbil', // 💡 نام داخلی اپلیکیشن تغییر یافت
       theme: ThemeData(primarySwatch: Colors.blue),
       home: const WebViewScreen(),
       debugShowCheckedModeBanner: false,
@@ -33,15 +34,22 @@ class WebViewScreen extends StatefulWidget {
 
 class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
+  final _appLinks = AppLinks(); 
   
   bool _isLoading = true;
   String _errorMessage = '';
   Timer? _timeoutTimer;
+  
+  final String _defaultUrl = "https://script.google.com/macros/s/AKfycbyC4r6ETL4TpC3FQIMjDd2gJoTB5mijctOcHXLbkCV68aeCb0EKr5QHpzbJpcqE3BQv/exec";
 
   @override
   void initState() {
     super.initState();
-    
+    _initWebView();
+    _initDeepLinks();
+  }
+
+  void _initWebView() {
     _timeoutTimer = Timer(const Duration(seconds: 15), () {
       if (mounted && _isLoading) {
         setState(() { _isLoading = false; });
@@ -55,56 +63,19 @@ class _WebViewScreenState extends State<WebViewScreen> {
         NavigationDelegate(
           onPageStarted: (String url) {
             setState(() { _isLoading = true; _errorMessage = ''; });
+            _injectBannerKiller(); 
+          },
+          onProgressChanged: (int progress) {
+            if (progress > 40) {
+              _injectBannerKiller(); 
+            }
           },
           onPageFinished: (String url) {
             if (url.contains('script.googleusercontent.com') || url.contains('exec')) {
               setState(() { _isLoading = false; });
               _timeoutTimer?.cancel();
             }
-
-            // 💡 جراحی طلایی: اجرای لوپ مداوم برای شکار و حذف بنر گوگل به محض زاییده شدن در DOM
-            _controller.runJavaScript(r"""
-              (function() {
-                function killGoogleBanner() {
-                  // ۱. حذف بر اساس کلاس‌های معروف بنر گوگل
-                  var elements = document.querySelectorAll('.apps-share-space-banner-table, .apps-share-space-banner');
-                  elements.forEach(function(el) {
-                    if (el) el.style.setProperty('display', 'none', 'important');
-                  });
-
-                  // ۲. حذف بر اساس ویژگی aria-label بنر
-                  var ariaElements = document.querySelectorAll('div[aria-label*="This application was created"], div[aria-label*="not by Google"]');
-                  ariaElements.forEach(function(el) {
-                    if (el) el.style.setProperty('display', 'none', 'important');
-                  });
-
-                  // ۳. جراحی لایه اول بدنه (گوگل گاهی بنر را به عنوان اولین جدول بادی می‌گذارد)
-                  if (document.body && document.body.firstChild && document.body.firstChild.tagName === 'TABLE') {
-                    document.body.firstChild.style.setProperty('display', 'none', 'important');
-                  }
-
-                  // ۴. صفر کردن حاشیه‌ها برای پر شدن تمام صفحه
-                  if (document.body) {
-                    document.body.style.setProperty('margin', '0', 'important');
-                    document.body.style.setProperty('padding', '0', 'important');
-                    document.body.style.setProperty('top', '0', 'important');
-                  }
-                }
-
-                // اجرای فوری
-                killGoogleBanner();
-
-                // اجرای متناوب هر ۱۰۰ میلی‌ثانیه تا ۷ ثانیه اول لود صفحه (برای مچ‌گیری تزریق‌های تأخیری گوگل)
-                var runCount = 0;
-                var bannerKillerInterval = setInterval(function() {
-                  killGoogleBanner();
-                  runCount++;
-                  if (runCount > 70) {
-                    clearInterval(bannerKillerInterval);
-                  }
-                }, 100);
-              })();
-            """);
+            _injectBannerKiller(); 
           },
           onWebResourceError: (WebResourceError error) {
             setState(() {
@@ -126,7 +97,53 @@ class _WebViewScreenState extends State<WebViewScreen> {
           },
         ),
       )
-      ..loadRequest(Uri.parse("https://script.google.com/macros/s/AKfycbyC4r6ETL4TpC3FQIMjDd2gJoTB5mijctOcHXLbkCV68aeCb0EKr5QHpzbJpcqE3BQv/exec"));
+      ..loadRequest(Uri.parse(_defaultUrl));
+  }
+
+  void _injectBannerKiller() {
+    _controller.runJavaScript(r"""
+      (function() {
+        var styleId = 'anti-google-banner-style';
+        if (document.getElementById(styleId)) return;
+        var style = document.createElement('style');
+        style.id = styleId;
+        style.innerHTML = `
+          .apps-share-space-banner-table, 
+          .apps-share-space-banner,
+          div[aria-label*="This application was created"], 
+          div[aria-label*="not by Google"],
+          iframe~table,
+          body > table:first-child { 
+            display: none !important; 
+            visibility: hidden !important;
+            height: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+          }
+          html, body { 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            top: 0 !important; 
+          }
+        `;
+        (document.head || document.documentElement).appendChild(style);
+      })();
+    """);
+  }
+
+  void _initDeepLinks() async {
+    try {
+      final initialUri = await _appLinks.getInitialLink();
+      if (initialUri != null) {
+        _controller.loadRequest(initialUri);
+      }
+      
+      _appLinks.uriLinkStream.listen((uri) {
+        _controller.loadRequest(uri);
+      });
+    } catch (e) {
+      debugPrint("Deep Link Error: $e");
+    }
   }
   
   @override
