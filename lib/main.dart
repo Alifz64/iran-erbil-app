@@ -1,4 +1,4 @@
-// نسخه: V_20260710_1534_MAIN_FINAL_HYBRID
+// نسخه: V_20260710_1720_MAIN_PERSIAN_BANNER_NUKE
 // ========================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -65,17 +65,16 @@ class _WebViewScreenState extends State<WebViewScreen> {
             if (!url.contains('script.googleusercontent.com')) {
               setState(() { _isLoading = true; _errorMessage = ''; });
             }
-            _injectSafeBannerKiller(); 
+            _startBannerNukeLoop(); 
           },
           onProgress: (int progress) {
-            _injectSafeBannerKiller(); 
             if (progress > 90 && _isLoading) {
               setState(() { _isLoading = false; });
               _timeoutTimer?.cancel();
             }
           },
           onPageFinished: (String url) {
-            _injectSafeBannerKiller();
+            _startBannerNukeLoop(); 
             Future.delayed(const Duration(milliseconds: 2000), () {
               if (mounted) {
                 setState(() { _isLoading = false; });
@@ -108,36 +107,44 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ..loadRequest(Uri.parse(_defaultUrl));
   }
 
-  // 💡 تزریق استایل‌های دقیق برای ریشه‌کن کردن بنر به محض رندر شدن صفحات گوگل
-  void _injectSafeBannerKiller() {
+  // 💡 روبات نابودگر آپدیت شده: شکار کلمات کلیدی فارسی علاوه بر انگلیسی
+  void _startBannerNukeLoop() {
     _controller.runJavaScript(r"""
-      (function() {
-        var styleId = 'safe-anti-google-banner';
-        if (document.getElementById(styleId)) return;
-        
-        var style = document.createElement('style');
-        style.id = styleId;
-        style.innerHTML = `
-          .apps-share-space-banner, 
-          .apps-share-space-banner-table, 
-          .apps-share-space-banner-container,
-          td[style*="background-color: #e2eaf8"],
-          td[style*="background-color:#e2eaf8"],
-          div[aria-label*="This application was created"], 
-          div[aria-label*="not by Google"] { 
-            display: none !important; 
-            visibility: hidden !important;
-            height: 0 !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
+      if (!window.bannerNukeInterval) {
+        window.bannerNukeInterval = setInterval(function() {
+          var allDivs = document.querySelectorAll('div, td');
+          allDivs.forEach(function(el) {
+            if (el.innerHTML.includes('This application was created by another user') || 
+                el.innerHTML.includes('not by Google') ||
+                el.innerHTML.includes('این برنامه را کاربر') || 
+                el.innerHTML.includes('گزارش سوءاستفاده') ||
+                el.innerHTML.includes('Google Apps Script')) {
+              el.remove(); 
+            }
+          });
+
+          var styleId = 'nuke-google-banner-style';
+          if (!document.getElementById(styleId)) {
+            var style = document.createElement('style');
+            style.id = styleId;
+            style.innerHTML = `
+              .apps-share-space-banner, 
+              div[aria-label*="This application was created"], 
+              div[aria-label*="not by Google"] { 
+                display: none !important; 
+                opacity: 0 !important;
+                height: 0 !important;
+                pointer-events: none !important;
+              }
+              body > table:first-child { display: none !important; }
+            `;
+            (document.head || document.documentElement).appendChild(style);
           }
-        `;
-        document.head.appendChild(style);
-      })();
+        }, 500); 
+      }
     """);
   }
 
-  // 💡 مدیریت هوشمند پیوندهای عمیق (پشتیبانی از پروتکل استاندارد و اختصاصی)
   void _initDeepLinks() async {
     try {
       final initialUri = await _appLinks.getInitialLink();
@@ -154,7 +161,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   void _handleIncomingLink(Uri uri) {
     String urlString = uri.toString();
-    // اگر لینک به صورت اختصاصی iranerbil://auth آمد، آن را به آدرس وب‌اپ تغییر فرمت بده تا توکن لود شود
     if (uri.scheme == 'iranerbil') {
       urlString = urlString.replaceFirst('iranerbil://auth', _defaultUrl);
     }
