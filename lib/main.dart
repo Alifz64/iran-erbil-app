@@ -1,4 +1,4 @@
-// نسخه: V_20260710_1835_FINAL_SAFE_PREVENT_WHITE_SCREEN
+// نسخه: V_20260710_1910_IFRAME_FULLSCREEN_FIX
 // ========================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -50,6 +50,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   }
 
   void _initWebView() {
+    // تایمر پشتیبان برای خروج از اسپلش در صورت کندی اینترنت
     _timeoutTimer = Timer(const Duration(seconds: 14), () {
       if (mounted && _isLoading) {
         setState(() { _isLoading = false; });
@@ -65,13 +66,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
             if (!url.contains('script.googleusercontent.com')) {
               setState(() { _isLoading = true; _errorMessage = ''; });
             }
-            _injectPerfectBannerKiller(); 
+            _maximizeAppIframe(); 
           },
           onProgress: (int progress) {
-            _injectPerfectBannerKiller(); 
-            // باز شدن اسپلش به محض رسیدن به لود نهایی فرانت‌آند شما
-            if (progress == 100) {
-              Future.delayed(const Duration(milliseconds: 600), () {
+            _maximizeAppIframe(); 
+            if (progress > 90) {
+              Future.delayed(const Duration(milliseconds: 1000), () {
                 if (mounted && _isLoading) {
                   setState(() { _isLoading = false; });
                   _timeoutTimer?.cancel();
@@ -80,7 +80,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
             }
           },
           onPageFinished: (String url) {
-            _injectPerfectBannerKiller();
+            _maximizeAppIframe();
             if (url.contains('script.googleusercontent.com')) {
               setState(() { _isLoading = false; });
               _timeoutTimer?.cancel();
@@ -111,50 +111,39 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ..loadRequest(Uri.parse(_defaultUrl));
   }
 
-  // 💡 جراحی نهایی بنر: استفاده از پنهان‌سازی مطلق شیوه CSS بجای حذف فیزیکی المنت‌ها
-  // این متد ۱۰۰٪ گارانتی می‌کند که هیچ داده‌ای از برنامه شما آسیب نخواهد دید.
-  void _injectPerfectBannerKiller() {
+  // 💡 استراتژیِ طلایی: تمام‌صفحه کردنِ قابِ داده‌ها (Iframe) روی سایر اجزای گوگل
+  // این روش ۱۰۰٪ ایمن است چون به جای پاک کردن چیزی، فقط برنامه شما را بزرگ می‌کند تا بنر زیر آن مخفی شود.
+  void _maximizeAppIframe() {
     _controller.runJavaScript(r"""
       (function() {
-        var styleId = 'perfect-nuke-google-banner-style';
-        if (document.getElementById(styleId)) return;
+        var maximizeData = function() {
+          var iframes = document.getElementsByTagName('iframe');
+          if (iframes.length > 0) {
+            for (var i = 0; i < iframes.length; i++) {
+              var frame = iframes[i];
+              frame.style.setProperty('position', 'fixed', 'important');
+              frame.style.setProperty('top', '0', 'important');
+              frame.style.setProperty('left', '0', 'important');
+              frame.style.setProperty('width', '100vw', 'important');
+              frame.style.setProperty('height', '100vh', 'important');
+              frame.style.setProperty('z-index', '999999', 'important');
+              frame.style.setProperty('border', 'none', 'important');
+              frame.style.setProperty('background-color', '#ffffff', 'important');
+            }
+          }
+        };
         
-        var style = document.createElement('style');
-        style.id = styleId;
-        style.innerHTML = `
-          /* هدف‌گیری لیزری بنرهای فارسی و انگلیسی بدون اثر منفی روی داده‌های شیت */
-          .apps-share-space-banner, 
-          .apps-share-space-banner-table, 
-          .apps-share-space-banner-container,
-          body > table:first-of-type,
-          div[aria-label*="This application was created"], 
-          div[aria-label*="not by Google"],
-          div[aria-label*="این برنامه را کاربر"],
-          div[aria-label*="Google Apps Script"],
-          td[style*="background-color: #e2eaf8"],
-          td[style*="background-color:#e2eaf8"] { 
-            display: none !important; 
-            visibility: hidden !important;
-            opacity: 0 !important;
-            height: 0 !important;
-            max-height: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            pointer-events: none !important;
-            overflow: hidden !important;
-          }
-          html, body { 
-            margin: 0 !important; 
-            padding: 0 !important; 
-            top: 0 !important; 
-          }
-        `;
-        (document.head || document.documentElement).appendChild(style);
+        // اجرای فوری
+        maximizeData();
+        
+        // اجرای مداوم در پس‌زمینه تا در صورت لود شدنِ تأخیریِ گوگل، فوراً قاب را بزرگ کند
+        if (!window.iframeMaximizerInterval) {
+          window.iframeMaximizerInterval = setInterval(maximizeData, 500);
+        }
       })();
     """);
   }
 
-  // 💡 مدیریت هوشمند و کاملاً مستقل پیوندهای عمیق (Deep Linking) تلگرام
   void _initDeepLinks() async {
     try {
       final initialUri = await _appLinks.getInitialLink();
@@ -189,7 +178,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // تنظیم دقیق سایز اسپلش روی ۷۵٪ عرض صفحه گوشی کاربر
+    // لوگوی اسپلش دقیقاً ۷۵٪ عرض صفحه را پر می‌کند
     double splashWidth = MediaQuery.of(context).size.width * 0.75;
 
     return Scaffold(
