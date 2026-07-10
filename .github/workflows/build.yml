@@ -1,5 +1,4 @@
-# نسخه: V_20260710_1327_BUILD_FINAL_NAME
-# ========================================================
+# Version: V_20260710_1534_BUILD_FINAL_HYBRID
 name: Build Mobile Apps
 
 on:
@@ -27,20 +26,42 @@ jobs:
     - name: Create Flutter Project Structure
       run: flutter create .
       
-    # 💡 تنظیم قطعی نام برند در سیستم‌عامل اندروید
-    - name: Set Android App Name
+    # 💡 اصلاح مهندسی ساختار اندروید با پایتون برای اعمال نام، دسترسی اینترنت و پیوندهای عمیق بدون خطای کاراکتری
+    - name: Configure Android Manifest via Python
       run: |
-        sed -i 's/android:label="[^"]*"/android:label="ایران‌اربیل IranErbil"/g' android/app/src/main/AndroidManifest.xml
-
-    - name: Add Internet Permission
-      run: |
-        sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <application/g' android/app/src/main/AndroidManifest.xml
-
-    # 💡 تزریق لینک‌های عمیق تلگرام (با نام لیبل جدید)
-    - name: Inject Deep Link Intent Filter
-      run: |
-        sed -i '/<\/intent-filter>/a \        <intent-filter android:label="ایران‌اربیل IranErbil">\n            <action android:name="android.intent.action.VIEW" \/>\n            <category android:name="android.intent.category.DEFAULT" \/>\n            <category android:name="android.intent.category.BROWSABLE" \/>\n            <data android:scheme="https" android:host="script.google.com" android:pathPrefix="\/macros\/s\/AKfycbyC4r6ETL4TpC3FQIMjDd2gJoTB5mijctOcHXLbkCV68aeCb0EKr5QHpzbJpcqE3BQv\/exec" \/>\n        <\/intent-filter>' android/app/src/main/AndroidManifest.xml
+        python3 -c "
+        path = 'android/app/src/main/AndroidManifest.xml'
+        with open(path, 'r') as f: text = f.read()
+        import re
         
+        # ۱. تنظیم نام برند اپلیکیشن
+        text = re.sub(r'android:label=\"[^\"]*\"', 'android:label=\"ایران‌اربیل IranErbil\"', text, count=1)
+        
+        # ۲. اضافه کردن دسترسی اینترنت
+        if 'android.permission.INTERNET' not in text:
+            text = text.replace('<manifest', '<manifest>\n    <uses-permission android:name=\"android.permission.INTERNET\" />')
+        
+        # ۳. تزریق کدهای بدون نقص اینتنت‌فیلتر پیوندهای عمیق (پروتکل وب و پروتکل اختصاصی)
+        deep_links = '''        <intent-filter android:label=\"ایران‌اربیل IranErbil\">
+                    <action android:name=\"android.intent.action.VIEW\" />
+                    <category android:name=\"android.intent.category.DEFAULT\" />
+                    <category android:name=\"android.intent.category.BROWSABLE\" />
+                    <data android:scheme=\"https\" android:host=\"script.google.com\" android:pathPrefix=\"/macros/s/AKfycbyC4r6ETL4TpC3FQIMjDd2gJoTB5mijctOcHXLbkCV68aeCb0EKr5QHpzbJpcqE3BQv/exec\" />
+                    <data android:scheme=\"https\" android:host=\"script.googleusercontent.com\" />
+                </intent-filter>
+                <intent-filter>
+                    <action android:name=\"android.intent.action.VIEW\" />
+                    <category android:name=\"android.intent.category.DEFAULT\" />
+                    <category android:name=\"android.intent.category.BROWSABLE\" />
+                    <data android:scheme=\"iranerbil\" android:host=\"auth\" />
+                </intent-filter>'''
+        
+        text = text.replace('</intent-filter>', '</intent-filter>\n' + deep_links)
+        
+        with open(path, 'w') as f: f.write(text)
+        print('Android Configuration Completed Successfully.')
+        "
+
     - name: Install Dependencies
       run: flutter pub get
 
@@ -71,7 +92,6 @@ jobs:
     - name: Create Flutter Project Structure
       run: flutter create .
       
-    # 💡 تنظیم قطعی نام برند در سیستم‌عامل آی‌اواس (آیفون)
     - name: Set iOS App Name
       run: |
         plutil -replace CFBundleDisplayName -string "ایران‌اربیل IranErbil" ios/Runner/Info.plist

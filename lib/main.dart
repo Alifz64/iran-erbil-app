@@ -1,4 +1,4 @@
-// نسخه: V_20260710_1500_BULLETPROOF_RENDER
+// نسخه: V_20260710_1534_MAIN_FINAL_HYBRID
 // ========================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -50,7 +50,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
   }
 
   void _initWebView() {
-    // تایمر پشتیبان ۱۴ ثانیه‌ای
     _timeoutTimer = Timer(const Duration(seconds: 14), () {
       if (mounted && _isLoading) {
         setState(() { _isLoading = false; });
@@ -63,19 +62,21 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
-            setState(() { _isLoading = true; _errorMessage = ''; });
+            if (!url.contains('script.googleusercontent.com')) {
+              setState(() { _isLoading = true; _errorMessage = ''; });
+            }
             _injectSafeBannerKiller(); 
           },
           onProgress: (int progress) {
             _injectSafeBannerKiller(); 
+            if (progress > 90 && _isLoading) {
+              setState(() { _isLoading = false; });
+              _timeoutTimer?.cancel();
+            }
           },
           onPageFinished: (String url) {
             _injectSafeBannerKiller();
-            
-            // 💡 جراحی حیاتی: گوگل اسکریپت از iframe داخلی استفاده می‌کند.
-            // پس از اعلام پایان لود توسط فلاتر، ۲.۵ ثانیه به iframe داخلی فرصت می‌دهیم تا رندر شود،
-            // سپس اسپلش را کنار می‌زنیم تا کاربر هرگز صفحه سفید نبیند.
-            Future.delayed(const Duration(milliseconds: 2500), () {
+            Future.delayed(const Duration(milliseconds: 2000), () {
               if (mounted) {
                 setState(() { _isLoading = false; });
                 _timeoutTimer?.cancel();
@@ -107,38 +108,57 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ..loadRequest(Uri.parse(_defaultUrl));
   }
 
-  // 💡 جراحی دقیق CSS: این کد فقط و فقط کلاس‌های اختصاصی گوگل را هدف می‌گیرد
-  // و به هیچ عنوان به قالب، جداول یا داده‌های اپلیکیشن شما آسیبی نمی‌رساند.
+  // 💡 تزریق استایل‌های دقیق برای ریشه‌کن کردن بنر به محض رندر شدن صفحات گوگل
   void _injectSafeBannerKiller() {
     _controller.runJavaScript(r"""
       (function() {
-        var styleId = 'safe-anti-banner';
+        var styleId = 'safe-anti-google-banner';
         if (document.getElementById(styleId)) return;
         
         var style = document.createElement('style');
         style.id = styleId;
         style.innerHTML = `
-          .apps-share-space-banner { display: none !important; }
-          div[aria-label*="This application was created"] { display: none !important; }
-          div[aria-label*="not by Google"] { display: none !important; }
+          .apps-share-space-banner, 
+          .apps-share-space-banner-table, 
+          .apps-share-space-banner-container,
+          td[style*="background-color: #e2eaf8"],
+          td[style*="background-color:#e2eaf8"],
+          div[aria-label*="This application was created"], 
+          div[aria-label*="not by Google"] { 
+            display: none !important; 
+            visibility: hidden !important;
+            height: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+          }
         `;
         document.head.appendChild(style);
       })();
     """);
   }
 
+  // 💡 مدیریت هوشمند پیوندهای عمیق (پشتیبانی از پروتکل استاندارد و اختصاصی)
   void _initDeepLinks() async {
     try {
       final initialUri = await _appLinks.getInitialLink();
       if (initialUri != null) {
-        _controller.loadRequest(initialUri);
+        _handleIncomingLink(initialUri);
       }
       _appLinks.uriLinkStream.listen((uri) {
-        _controller.loadRequest(uri);
+        _handleIncomingLink(uri);
       });
     } catch (e) {
       debugPrint("Deep Link Error: $e");
     }
+  }
+
+  void _handleIncomingLink(Uri uri) {
+    String urlString = uri.toString();
+    // اگر لینک به صورت اختصاصی iranerbil://auth آمد، آن را به آدرس وب‌اپ تغییر فرمت بده تا توکن لود شود
+    if (uri.scheme == 'iranerbil') {
+      urlString = urlString.replaceFirst('iranerbil://auth', _defaultUrl);
+    }
+    _controller.loadRequest(Uri.parse(urlString));
   }
   
   @override
@@ -149,7 +169,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 💡 سایز لوگو دقیقاً روی ۷۵ درصد صفحه تنظیم شده است
     double splashWidth = MediaQuery.of(context).size.width * 0.75;
 
     return Scaffold(
