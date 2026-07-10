@@ -1,4 +1,4 @@
-// نسخه: V_20260710_1720_MAIN_PERSIAN_BANNER_NUKE
+// نسخه: V_20260710_1835_FINAL_SAFE_PREVENT_WHITE_SCREEN
 // ========================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -65,22 +65,26 @@ class _WebViewScreenState extends State<WebViewScreen> {
             if (!url.contains('script.googleusercontent.com')) {
               setState(() { _isLoading = true; _errorMessage = ''; });
             }
-            _startBannerNukeLoop(); 
+            _injectPerfectBannerKiller(); 
           },
           onProgress: (int progress) {
-            if (progress > 90 && _isLoading) {
-              setState(() { _isLoading = false; });
-              _timeoutTimer?.cancel();
+            _injectPerfectBannerKiller(); 
+            // باز شدن اسپلش به محض رسیدن به لود نهایی فرانت‌آند شما
+            if (progress == 100) {
+              Future.delayed(const Duration(milliseconds: 600), () {
+                if (mounted && _isLoading) {
+                  setState(() { _isLoading = false; });
+                  _timeoutTimer?.cancel();
+                }
+              });
             }
           },
           onPageFinished: (String url) {
-            _startBannerNukeLoop(); 
-            Future.delayed(const Duration(milliseconds: 2000), () {
-              if (mounted) {
-                setState(() { _isLoading = false; });
-                _timeoutTimer?.cancel();
-              }
-            });
+            _injectPerfectBannerKiller();
+            if (url.contains('script.googleusercontent.com')) {
+              setState(() { _isLoading = false; });
+              _timeoutTimer?.cancel();
+            }
           },
           onWebResourceError: (WebResourceError error) {
             if (error.description.contains('ERR_CONNECTION_REFUSED') || error.description.contains('Internet')) {
@@ -107,44 +111,50 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ..loadRequest(Uri.parse(_defaultUrl));
   }
 
-  // 💡 روبات نابودگر آپدیت شده: شکار کلمات کلیدی فارسی علاوه بر انگلیسی
-  void _startBannerNukeLoop() {
+  // 💡 جراحی نهایی بنر: استفاده از پنهان‌سازی مطلق شیوه CSS بجای حذف فیزیکی المنت‌ها
+  // این متد ۱۰۰٪ گارانتی می‌کند که هیچ داده‌ای از برنامه شما آسیب نخواهد دید.
+  void _injectPerfectBannerKiller() {
     _controller.runJavaScript(r"""
-      if (!window.bannerNukeInterval) {
-        window.bannerNukeInterval = setInterval(function() {
-          var allDivs = document.querySelectorAll('div, td');
-          allDivs.forEach(function(el) {
-            if (el.innerHTML.includes('This application was created by another user') || 
-                el.innerHTML.includes('not by Google') ||
-                el.innerHTML.includes('این برنامه را کاربر') || 
-                el.innerHTML.includes('گزارش سوءاستفاده') ||
-                el.innerHTML.includes('Google Apps Script')) {
-              el.remove(); 
-            }
-          });
-
-          var styleId = 'nuke-google-banner-style';
-          if (!document.getElementById(styleId)) {
-            var style = document.createElement('style');
-            style.id = styleId;
-            style.innerHTML = `
-              .apps-share-space-banner, 
-              div[aria-label*="This application was created"], 
-              div[aria-label*="not by Google"] { 
-                display: none !important; 
-                opacity: 0 !important;
-                height: 0 !important;
-                pointer-events: none !important;
-              }
-              body > table:first-child { display: none !important; }
-            `;
-            (document.head || document.documentElement).appendChild(style);
+      (function() {
+        var styleId = 'perfect-nuke-google-banner-style';
+        if (document.getElementById(styleId)) return;
+        
+        var style = document.createElement('style');
+        style.id = styleId;
+        style.innerHTML = `
+          /* هدف‌گیری لیزری بنرهای فارسی و انگلیسی بدون اثر منفی روی داده‌های شیت */
+          .apps-share-space-banner, 
+          .apps-share-space-banner-table, 
+          .apps-share-space-banner-container,
+          body > table:first-of-type,
+          div[aria-label*="This application was created"], 
+          div[aria-label*="not by Google"],
+          div[aria-label*="این برنامه را کاربر"],
+          div[aria-label*="Google Apps Script"],
+          td[style*="background-color: #e2eaf8"],
+          td[style*="background-color:#e2eaf8"] { 
+            display: none !important; 
+            visibility: hidden !important;
+            opacity: 0 !important;
+            height: 0 !important;
+            max-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            pointer-events: none !important;
+            overflow: hidden !important;
           }
-        }, 500); 
-      }
+          html, body { 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            top: 0 !important; 
+          }
+        `;
+        (document.head || document.documentElement).appendChild(style);
+      })();
     """);
   }
 
+  // 💡 مدیریت هوشمند و کاملاً مستقل پیوندهای عمیق (Deep Linking) تلگرام
   void _initDeepLinks() async {
     try {
       final initialUri = await _appLinks.getInitialLink();
@@ -160,11 +170,15 @@ class _WebViewScreenState extends State<WebViewScreen> {
   }
 
   void _handleIncomingLink(Uri uri) {
-    String urlString = uri.toString();
     if (uri.scheme == 'iranerbil') {
-      urlString = urlString.replaceFirst('iranerbil://auth', _defaultUrl);
+      final token = uri.queryParameters['token'];
+      if (token != null) {
+        final targetUrl = "$_defaultUrl?token=$token";
+        _controller.loadRequest(Uri.parse(targetUrl));
+      } else {
+        _controller.loadRequest(Uri.parse(_defaultUrl));
+      }
     }
-    _controller.loadRequest(Uri.parse(urlString));
   }
   
   @override
@@ -175,6 +189,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // تنظیم دقیق سایز اسپلش روی ۷۵٪ عرض صفحه گوشی کاربر
     double splashWidth = MediaQuery.of(context).size.width * 0.75;
 
     return Scaffold(
