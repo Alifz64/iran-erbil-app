@@ -1,4 +1,4 @@
-# نسخه: V_20260710_1548_BUILD_MANIFEST_FIX
+# نسخه: V_20260711_1026_BUILD_IOS_DEEPLINK
 # ========================================================
 name: Build Mobile Apps
 
@@ -27,22 +27,17 @@ jobs:
     - name: Create Flutter Project Structure
       run: flutter create .
       
-    # 💡 اصلاح مهندسی ساختار اندروید: استفاده از نقاط امنِ XML برای جلوگیری از متلاشی شدن فایل
     - name: Configure Android Manifest via Python
       run: |
         python3 -c "
         path = 'android/app/src/main/AndroidManifest.xml'
         with open(path, 'r') as f: text = f.read()
         import re
-        
-        # ۱. تنظیم نام برند اپلیکیشن
         text = re.sub(r'android:label=\"[^\"]*\"', 'android:label=\"ایران‌اربیل IranErbil\"', text, count=1)
         
-        # ۲. اضافه کردن دسترسی اینترنت در نقطه امنِ قبل از تگ اپلیکیشن
         if 'android.permission.INTERNET' not in text:
             text = text.replace('<application', '<uses-permission android:name=\"android.permission.INTERNET\" />\n    <application')
         
-        # ۳. تزریق کدهای بدون نقص اینتنت‌فیلتر پیوندهای عمیق
         deep_links = '''        <intent-filter android:autoVerify=\"true\">
                     <action android:name=\"android.intent.action.VIEW\" />
                     <category android:name=\"android.intent.category.DEFAULT\" />
@@ -94,10 +89,30 @@ jobs:
     - name: Create Flutter Project Structure
       run: flutter create .
       
-    - name: Set iOS App Name
+    - name: Configure iOS Info.plist
       run: |
         plutil -replace CFBundleDisplayName -string "ایران‌اربیل IranErbil" ios/Runner/Info.plist
         plutil -replace CFBundleName -string "ایران‌اربیل IranErbil" ios/Runner/Info.plist
+        python3 -c "
+        path = 'ios/Runner/Info.plist'
+        with open(path, 'r') as f: text = f.read()
+        url_scheme = '''
+        <key>CFBundleURLTypes</key>
+        <array>
+          <dict>
+            <key>CFBundleURLName</key>
+            <string>com.iranerbil.app</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+              <string>iranerbil</string>
+            </array>
+          </dict>
+        </array>
+        '''
+        if 'CFBundleURLTypes' not in text:
+            text = text.replace('</dict>\n</plist>', url_scheme + '</dict>\n</plist>')
+            with open(path, 'w') as f: f.write(text)
+        "
         
     - name: Install Dependencies
       run: flutter pub get
