@@ -26,6 +26,7 @@ flutter:
   assets:
     - assets/icon.png
     - assets/splash.png
+    - assets/offline.html
 
 flutter_launcher_icons:
   android: "launcher_icon"

@@ -1,4 +1,4 @@
-// نسخه: V_20260710_1910_IFRAME_FULLSCREEN_FIX
+// نسخه: V_20260711_2020_FLUTTER_ERR_RESOLVER
 // ========================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -87,10 +87,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
             }
           },
           onWebResourceError: (WebResourceError error) {
-            if (error.description.contains('ERR_CONNECTION_REFUSED') || error.description.contains('Internet')) {
+            // 💡 جراحی هوشمند: به جای فیلتر کردن متنی، وضعیت فریم اصلی بررسی می‌شود
+            // این کار باعث صید قطعی تمامی خطاهای عدم اتصال از جمله ERR_NAME_NOT_RESOLVED می‌شود
+            if (error.isForMainFrame ?? true) {
               setState(() {
                 _isLoading = false;
-                _errorMessage = error.description;
+                _errorMessage = "اتصال اینترنت خود را بررسی کنید.";
               });
             }
           },
@@ -112,7 +114,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
   }
 
   // 💡 استراتژیِ طلایی: تمام‌صفحه کردنِ قابِ داده‌ها (Iframe) روی سایر اجزای گوگل
-  // این روش ۱۰۰٪ ایمن است چون به جای پاک کردن چیزی، فقط برنامه شما را بزرگ می‌کند تا بنر زیر آن مخفی شود.
   void _maximizeAppIframe() {
     _controller.runJavaScript(r"""
       (function() {
@@ -121,22 +122,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
           if (iframes.length > 0) {
             for (var i = 0; i < iframes.length; i++) {
               var frame = iframes[i];
-              frame.style.setProperty('position', 'fixed', 'important');
-              frame.style.setProperty('top', '0', 'important');
-              frame.style.setProperty('left', '0', 'important');
-              frame.style.setProperty('width', '100vw', 'important');
-              frame.style.setProperty('height', '100vh', 'important');
-              frame.style.setProperty('z-index', '999999', 'important');
-              frame.style.setProperty('border', 'none', 'important');
-              frame.style.setProperty('background-color', '#ffffff', 'important');
+              frame.style.setProperty('position', 'fixed', 'important'); frame.style.setProperty('top', '0', 'important'); frame.style.setProperty('left', '0', 'important'); frame.style.setProperty('width', '100vw', 'important'); frame.style.setProperty('height', '100vh', 'important'); frame.style.setProperty('z-index', '999999', 'important'); frame.style.setProperty('border', 'none', 'important'); frame.style.setProperty('background-color', '#ffffff', 'important');
             }
           }
         };
-        
-        // اجرای فوری
         maximizeData();
-        
-        // اجرای مداوم در پس‌زمینه تا در صورت لود شدنِ تأخیریِ گوگل، فوراً قاب را بزرگ کند
         if (!window.iframeMaximizerInterval) {
           window.iframeMaximizerInterval = setInterval(maximizeData, 500);
         }
@@ -178,7 +168,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // لوگوی اسپلش دقیقاً ۷۵٪ عرض صفحه را پر می‌کند
     double splashWidth = MediaQuery.of(context).size.width * 0.75;
 
     return Scaffold(
@@ -218,21 +207,31 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.wifi_off, size: 60, color: Colors.red),
+                        const Icon(Icons.wifi_off, size: 70, color: Colors.orangeRed),
                         const SizedBox(height: 20),
-                        Text(
-                          'ارتباط با سرور برقرار نشد!\n$_errorMessage',
-                          style: const TextStyle(fontSize: 16, color: Colors.red),
-                          textAlign: TextAlign.center,
-                          textDirection: TextDirection.ltr,
+                        const Text(
+                          'ارتباط با سرور برقرار نشد!',
+                          style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: Colors.blackd8),
+                          textDirection: TextDirection.rtl,
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 10),
+                        Text(
+                          _errorMessage,
+                          style: const TextStyle(fontSize: 14, color: Colors.grey),
+                          textAlign: TextAlign.center,
+                          textDirection: TextDirection.rtl,
+                        ),
+                        const SizedBox(height: 35),
                         ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
                           onPressed: () {
                             setState(() { _isLoading = true; _errorMessage = ''; });
-                            _controller.reload();
+                            _controller.loadRequest(Uri.parse(_defaultUrl));
                           },
-                          child: const Text('تلاش مجدد'),
+                          child: const Text('تلاش مجدد', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         )
                       ],
                     ),
