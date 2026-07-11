@@ -1,4 +1,4 @@
-// نسخه: V_20260711_2020_FLUTTER_ERR_RESOLVER
+// نسخه: V_20260711_2028_FLUTTER_COLOR_FIX
 // ========================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -87,8 +87,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
             }
           },
           onWebResourceError: (WebResourceError error) {
-            // 💡 جراحی هوشمند: به جای فیلتر کردن متنی، وضعیت فریم اصلی بررسی می‌شود
-            // این کار باعث صید قطعی تمامی خطاهای عدم اتصال از جمله ERR_NAME_NOT_RESOLVED می‌شود
+            // صید قطعی خطای اینترنت (ERR_NAME_NOT_RESOLVED و غیره)
             if (error.isForMainFrame ?? true) {
               setState(() {
                 _isLoading = false;
@@ -113,7 +112,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ..loadRequest(Uri.parse(_defaultUrl));
   }
 
-  // 💡 استراتژیِ طلایی: تمام‌صفحه کردنِ قابِ داده‌ها (Iframe) روی سایر اجزای گوگل
   void _maximizeAppIframe() {
     _controller.runJavaScript(r"""
       (function() {
@@ -207,11 +205,13 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.wifi_off, size: 70, color: Colors.orangeRed),
+                        // تغییر رنگ از orangeRed به redAccent
+                        const Icon(Icons.wifi_off, size: 70, color: Colors.redAccent),
                         const SizedBox(height: 20),
+                        // تغییر رنگ از blackd8 به black87
                         const Text(
                           'ارتباط با سرور برقرار نشد!',
-                          style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: Colors.blackd8),
+                          style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: Colors.black87),
                           textDirection: TextDirection.rtl,
                         ),
                         const SizedBox(height: 10),
